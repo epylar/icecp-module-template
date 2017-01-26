@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <name>icecp-module-template</name>
+    <groupId>com.intel.icecp</groupId>
+    <artifactId>icecp-module-template</artifactId>
+    <version>0.2.0</version>
+    <packaging>pom</packaging>
+    <description>Maven template for common ICECP module properties, profiles, dependencies, etc.</description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <targetDir>target</targetDir>
+        <scm.username>localuser</scm.username>
+        <rpm.release>local</rpm.release>
+        <rpm.targetDirectory>/home/icecp/modules/${project.name}/${project.version}-${rpm.release}</rpm.targetDirectory>
+        <rpm.jarName>${project.artifactId}-${project.version}-jar-with-dependencies.jar</rpm.jarName>
+        <rpm.url>https://github.com/icecp/${project.artifactId}</rpm.url>
+        <rpm.maintainer>Intel Corporation</rpm.maintainer>
+        <rpm.vendor>Intel Corporation</rpm.vendor>
+        <rpm.digest>sha256</rpm.digest>
+        <rpm.category>Development/Libraries</rpm.category>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>1.10.19</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Run only integration-tests with mvn failsafe:integration-test; Run unit-tests and integration-tests with mvn verify -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.19.1</version>
+                <configuration>
+                    <additionalClasspathElements>
+                        <additionalClasspathElement>${targetDir}/classes</additionalClasspathElement>
+                    </additionalClasspathElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>1.9</version>
+                <executions>
+                    <execution>
+                        <id>download-licenses</id>
+                        <goals>
+                            <goal>download-licenses</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Run `mvn package -Pas-rpm` to build project as a runnable application; look for output in 'target/appassembler' -->
+        <profile>
+            <id>as-rpm</id>
+            <build>
+                <plugins>
+                    <!-- build a JAR with dependencies -->
+                    <plugin>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <configuration>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.intel.icecp.main.MainDaemon</mainClass>
+                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                    <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- package as an RPM -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>create-rpm</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <!-- see explanations at https://github.com/jordansissel/fpm/wiki#usage -->
+                            <executable>fpm</executable>
+                            <commandlineArgs>-s dir -t rpm -f
+                                --depends 'icecp-node >= 0.12.12'
+                                --template-scripts
+                                --before-install ${project.basedir}/packaging/scripts/before-install.sh
+                                --after-install ${project.basedir}/packaging/scripts/after-install.sh
+                                --before-remove ${project.basedir}/packaging/scripts/before-remove.sh
+                                --after-remove ${project.basedir}/packaging/scripts/after-remove.sh
+                                --name ${project.artifactId}
+                                --version ${project.version}
+                                --iteration ${rpm.release}
+                                --architecture all
+                                --vendor &quot;${rpm.vendor}&quot;
+                                --maintainer &quot;${rpm.maintainer}&quot;
+                                --description &quot;${project.description}&quot;
+                                --url &quot;${rpm.url}&quot;
+                                --rpm-digest &quot;${rpm.digest}&quot;
+                                --category &quot;${rpm.category}&quot;
+                                --license &quot;Intel Proprietary (see 'licenses' directory for libraries)&quot;
+                                --rpm-auto-add-directories --config-files=${rpm.targetDirectory}/config.json
+                                ${project.build.directory}/${rpm.jarName}=${rpm.targetDirectory}/${rpm.jarName}
+                                ${basedir}/configuration/config.json=${rpm.targetDirectory}/config.json
+                                ${basedir}/target/generated-resources/licenses=${rpm.targetDirectory}
+                                ${basedir}/target/generated-resources/licenses.xml=${rpm.targetDirectory}/licenses/licenses.xml
+                            </commandlineArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Run with `mvn package -Pwith-dependencies` to build JAR containing all dependencies; this is deprecated
+    and will be removed soon -->
+        <profile>
+            <id>with-dependencies</id>
+            <build>
+                <plugins>
+                    <!-- build a JAR with dependencies -->
+                    <plugin>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <configuration>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                    <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Run with `mvn install -Pwith-sources-and-javadoc` to build JAR with all javadoc, sources, etc.; disabled
+       by default to speed up development builds -->
+        <profile>
+            <id>with-sources-and-javadoc</id>
+            <build>
+                <plugins>
+                    <!-- add sources, javadoc -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.4</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.10.3</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Run `mvn clean site -Pjavadoc-to-github` to push JavaDoc to Github -->
+        <profile>
+            <id>javadoc-to-github</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.10.3</version>
+                        <executions>
+                            <execution>
+                                <id>generate-javadoc</id>
+                                <phase>site</phase>
+                                <goals>
+                                    <goal>javadoc</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-scm-publish-plugin</artifactId>
+                        <version>1.1</version>
+                        <configuration>
+                            <checkoutDirectory>${project.build.directory}/scmpublish</checkoutDirectory>
+                            <checkinComment>
+                                Publishing javadoc for ${project.artifactId}:${project.version}, ${ci.build.info}
+                            </checkinComment>
+                            <content>${project.build.directory}/site/apidocs</content>
+                            <skipDeletedFiles>true</skipDeletedFiles>
+                            <pubScmUrl>scm:git:https://github.com/icecp/${project.artifactId}.git</pubScmUrl>
+                            <scmBranch>gh-pages</scmBranch>
+                            <username>${scm.username}</username>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>publish-javadoc</id>
+                                <phase>site</phase>
+                                <goals>
+                                    <goal>publish-scm</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Run `mvn clean package -Pfor-analysis` to send analyzed code to SonarQube; see also
+        https://github.intel.com/iSPA/icecp-node/wiki/Setup-SonarQube -->
+        <profile>
+            <id>for-analysis</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>0.7.5.201505241946</version>
+                        <executions>
+                            <execution>
+                                <id>pre-unit-test</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>post-unit-test</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonarsource.scanner.maven</groupId>
+                        <artifactId>sonar-maven-plugin</artifactId>
+                        <version>3.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>scan-with-sonar</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>sonar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
