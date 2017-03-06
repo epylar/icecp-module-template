@@ -8,6 +8,7 @@
     <artifactId>icecp-module-template</artifactId>
     <version>0.2.0</version>
     <packaging>pom</packaging>
+    <url>https://github.com/icecp/${project.artifactId}</url>
     <description>Maven template for common ICECP module properties, profiles, dependencies, etc.</description>
 
     <licenses>
@@ -17,6 +18,26 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+    
+    <developers>
+        <developer>
+            <name>Intel Development Team</name>
+            <url>http://github.com/org/icecp/teams</url>
+        </developer>
+    </developers>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+    
+    <scm>
+        <url>https://github.com/icecp/${project.artifactId}</url>
+        <connection>scm:git:git@github.com:icecp/${project.artifactId}.git</connection>
+        <developerConnection>scm:git:git@github.com:icecp/${project.artifactId}.git</developerConnection>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -325,6 +346,71 @@
                                 <phase>prepare-package</phase>
                                 <goals>
                                     <goal>sonar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Use OSSRH-directed plugins (see http://central.sonatype.org/pages/apache-maven.html)
+    for deployment to Maven central; e.g. `mvn deploy -P ossrh`-->
+        <profile>
+            <id>ossrh</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.4</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.10.2</version>
+                        <configuration>
+                            <additionalparam>-Xdoclint:none</additionalparam>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.3</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <stagingProfileId>483e53c025e168</stagingProfileId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.5</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
                                 </goals>
                             </execution>
                         </executions>
