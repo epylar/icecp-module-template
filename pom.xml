@@ -310,8 +310,7 @@
             </build>
         </profile>
 
-        <!-- Run `mvn clean package -Pfor-analysis` to send analyzed code to SonarQube; see also
-        https://github.intel.com/iSPA/icecp-node/wiki/Setup-SonarQube -->
+        <!-- Run `mvn clean package -Pfor-analysis` to send analyzed code to SonarQube -->
         <profile>
             <id>for-analysis</id>
             <build>
